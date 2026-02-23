@@ -163,6 +163,7 @@ if (settingsCloseFooter) settingsCloseFooter.addEventListener('click', toggleSet
 if (startBtn) {
     // Default behavior if not logged in (overridden by updateUIForLoggedInUser)
     startBtn.addEventListener('click', () => {
+        console.log("Start button clicked");
         if (!auth || !auth.currentUser) {
             window.location.href = 'login.html';
         }
@@ -172,12 +173,24 @@ if (startBtn) {
 if (backBtn) backBtn.addEventListener('click', () => window.location.href = 'index.html');
 
 // Auth Event Listeners
-if (landingLoginBtn) landingLoginBtn.onclick = () => window.location.href = 'login.html';
-if (landingSignupBtn) landingSignupBtn.onclick = () => window.location.href = 'signup.html';
-if (loginBackBtn) loginBackBtn.onclick = () => window.location.href = 'index.html';
-if (signupBackBtn) signupBackBtn.onclick = () => window.location.href = 'index.html';
-if (goToSignupBtn) goToSignupBtn.onclick = () => window.location.href = 'signup.html';
-if (goToLoginBtn) goToLoginBtn.onclick = () => window.location.href = 'login.html';
+if (landingLoginBtn) {
+    landingLoginBtn.addEventListener('click', () => {
+        console.log("Navigating to login.html");
+        window.location.href = 'login.html';
+    });
+}
+
+if (landingSignupBtn) {
+    landingSignupBtn.addEventListener('click', () => {
+        console.log("Navigating to signup.html");
+        window.location.href = 'signup.html';
+    });
+}
+
+if (loginBackBtn) loginBackBtn.addEventListener('click', () => window.location.href = 'index.html');
+if (signupBackBtn) signupBackBtn.addEventListener('click', () => window.location.href = 'index.html');
+if (goToSignupBtn) goToSignupBtn.addEventListener('click', () => window.location.href = 'signup.html');
+if (goToLoginBtn) goToLoginBtn.addEventListener('click', () => window.location.href = 'login.html');
 
 // Form Submissions
 if (loginForm) {
