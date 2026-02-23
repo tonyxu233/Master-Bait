@@ -113,13 +113,13 @@ if (auth) {
             
             // If on login or signup page, redirect to dashboard
             if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
-                 window.location.href = 'dashboard.html';
+                 window.location.href = './dashboard.html';
             }
         } else {
             // User is signed out
             // If on dashboard, redirect to login
             if (window.location.pathname.includes('dashboard.html')) {
-                window.location.href = 'login.html';
+                window.location.href = './login.html';
             }
         }
     });
