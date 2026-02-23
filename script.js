@@ -5,7 +5,7 @@ import {
     signOut, 
     onAuthStateChanged,
     updateProfile
-} from "firebase/auth";
+} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
 
 const levels = [
     { id: 1, title: "The Puddle", status: 'completed', yOffset: 0 },
