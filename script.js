@@ -1,3 +1,12 @@
+import { auth } from './firebase-config.js';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged,
+    updateProfile
+} from "firebase/auth";
+
 const levels = [
     { id: 1, title: "The Puddle", status: 'completed', yOffset: 0 },
     { id: 2, title: "Local Pond", status: 'completed', yOffset: -60 },
@@ -8,12 +17,67 @@ const levels = [
 
 const state = {
     isSettingsOpen: false,
-    view: 'landing' // 'landing' | 'dashboard'
+};
+
+// Auth Service (Firebase Wrapper)
+const AuthService = {
+    login: async (email, password) => {
+        if (!auth) return { success: false, message: "Firebase configuration missing. Check console for details." };
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            return { success: true, user: userCredential.user };
+        } catch (error) {
+            console.error("Login Error:", error.code, error.message);
+            let message = error.message;
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                message = "Invalid email or password.";
+            } else if (error.code === 'auth/invalid-credential') {
+                message = "Invalid credentials.";
+            } else if (error.code === 'auth/too-many-requests') {
+                message = "Too many failed attempts. Please try again later.";
+            }
+            return { success: false, message: message };
+        }
+    },
+
+    signup: async (username, email, password) => {
+        if (!auth) return { success: false, message: "Firebase configuration missing. Check console for details." };
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(userCredential.user, { displayName: username });
+            return { success: true, user: userCredential.user };
+        } catch (error) {
+            console.error("Signup Error:", error.code, error.message);
+            let message = error.message;
+            if (error.code === 'auth/operation-not-allowed') {
+                message = "Email/Password sign-in is not enabled in Firebase Console. Please enable it in the Authentication section.";
+            } else if (error.code === 'auth/email-already-in-use') {
+                message = "Email is already in use.";
+            } else if (error.code === 'auth/weak-password') {
+                message = "Password is too weak. It should be at least 6 characters.";
+            } else if (error.code === 'auth/invalid-api-key') {
+                message = "Invalid Firebase API Key. Please check your .env file.";
+            }
+            return { success: false, message: message };
+        }
+    },
+
+    logout: async () => {
+        if (!auth) return;
+        try {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
+    },
+
+    getCurrentUser: () => {
+        return auth ? auth.currentUser : null;
+    }
 };
 
 // DOM Elements
-const landingView = document.getElementById('landing-view');
-const dashboardView = document.getElementById('dashboard-view');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsCloseBtn = document.getElementById('settings-close-btn');
@@ -23,13 +87,134 @@ const startBtn = document.getElementById('start-btn');
 const backBtn = document.getElementById('dashboard-back-btn');
 const dashboardContent = document.getElementById('dashboard-content');
 
+// Auth Forms & Inputs
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const loginEmailInput = document.getElementById('login-email');
+const loginPasswordInput = document.getElementById('login-password');
+const signupUsernameInput = document.getElementById('signup-username');
+const signupEmailInput = document.getElementById('signup-email');
+const signupPasswordInput = document.getElementById('signup-password');
+
+// Auth Buttons
+const landingLoginBtn = document.querySelector('.btn-login');
+const landingSignupBtn = document.querySelector('.btn-signup');
+const loginBackBtn = document.getElementById('login-back-btn');
+const signupBackBtn = document.getElementById('signup-back-btn');
+const goToSignupBtn = document.getElementById('go-to-signup');
+const goToLoginBtn = document.getElementById('go-to-login');
+
+// Check Auth State on Load
+if (auth) {
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // User is signed in
+            updateUIForLoggedInUser(user);
+            
+            // If on login or signup page, redirect to dashboard
+            if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
+                 window.location.href = 'dashboard.html';
+            }
+        } else {
+            // User is signed out
+            // If on dashboard, redirect to login
+            if (window.location.pathname.includes('dashboard.html')) {
+                window.location.href = 'login.html';
+            }
+        }
+    });
+} else {
+    console.warn("Auth not initialized, skipping auth state check");
+}
+
+function updateUIForLoggedInUser(user) {
+    // Update Start Button Text (only on landing page)
+    if (startBtn) {
+        const startBtnText = startBtn.querySelector('span');
+        if (startBtnText) {
+            // Use email as username fallback since displayName might be empty initially
+            const displayName = user.displayName || user.email.split('@')[0];
+            startBtnText.innerHTML = `Continue as ${displayName} <svg style="width: 16px; height: 16px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>`;
+        }
+        
+        // Update Start Button Action
+        startBtn.onclick = () => window.location.href = 'dashboard.html';
+    }
+    
+    // Hide Login/Signup buttons and show Logout (only on landing page)
+    if (landingLoginBtn) {
+        const authButtonsContainer = landingLoginBtn.parentElement;
+        authButtonsContainer.innerHTML = `
+            <button class="btn-secondary btn-login" id="logout-btn">
+                <span style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">Logout</span>
+            </button>
+        `;
+        // Re-attach listener for dynamic button
+        document.getElementById('logout-btn').addEventListener('click', () => AuthService.logout());
+    }
+}
+
 // Event Listeners
-headerSettingsBtn.addEventListener('click', toggleSettings);
-settingsBackdrop.addEventListener('click', toggleSettings);
-settingsCloseBtn.addEventListener('click', toggleSettings);
-settingsCloseFooter.addEventListener('click', toggleSettings);
-startBtn.addEventListener('click', () => setView('dashboard'));
-backBtn.addEventListener('click', () => setView('landing'));
+if (headerSettingsBtn) headerSettingsBtn.addEventListener('click', toggleSettings);
+if (settingsBackdrop) settingsBackdrop.addEventListener('click', toggleSettings);
+if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', toggleSettings);
+if (settingsCloseFooter) settingsCloseFooter.addEventListener('click', toggleSettings);
+
+if (startBtn) {
+    // Default behavior if not logged in (overridden by updateUIForLoggedInUser)
+    startBtn.addEventListener('click', () => {
+        if (!auth || !auth.currentUser) {
+            window.location.href = 'login.html';
+        }
+    });
+}
+
+if (backBtn) backBtn.addEventListener('click', () => window.location.href = 'index.html');
+
+// Auth Event Listeners
+if (landingLoginBtn) landingLoginBtn.onclick = () => window.location.href = 'login.html';
+if (landingSignupBtn) landingSignupBtn.onclick = () => window.location.href = 'signup.html';
+if (loginBackBtn) loginBackBtn.onclick = () => window.location.href = 'index.html';
+if (signupBackBtn) signupBackBtn.onclick = () => window.location.href = 'index.html';
+if (goToSignupBtn) goToSignupBtn.onclick = () => window.location.href = 'signup.html';
+if (goToLoginBtn) goToLoginBtn.onclick = () => window.location.href = 'login.html';
+
+// Form Submissions
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = loginEmailInput.value;
+        const password = loginPasswordInput.value;
+        
+        const result = await AuthService.login(email, password);
+        if (result.success) {
+            window.location.href = 'dashboard.html';
+        } else {
+            alert(result.message);
+        }
+    });
+}
+
+if (signupForm) {
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = signupUsernameInput.value;
+        const email = signupEmailInput.value;
+        const password = signupPasswordInput.value;
+        
+        const result = await AuthService.signup(username, email, password);
+        if (result.success) {
+            window.location.href = 'dashboard.html';
+        } else {
+            alert(result.message);
+        }
+    });
+}
+
+// Render Dashboard if on dashboard page
+if (dashboardContent) {
+    renderDashboard();
+}
 
 // Functions
 function toggleSettings() {
@@ -40,18 +225,6 @@ function toggleSettings() {
     } else {
         settingsOverlay.classList.add('hidden');
         document.body.style.overflow = '';
-    }
-}
-
-function setView(viewName) {
-    state.view = viewName;
-    if (viewName === 'landing') {
-        landingView.classList.remove('hidden');
-        dashboardView.classList.add('hidden');
-    } else {
-        landingView.classList.add('hidden');
-        dashboardView.classList.remove('hidden');
-        renderDashboard();
     }
 }
 
