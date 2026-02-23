@@ -1,3 +1,12 @@
+import { auth } from './firebase-config.js';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged,
+    updateProfile
+} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
 const levels = [
     { id: 1, title: "The Puddle", status: 'completed', yOffset: 0 },
     { id: 2, title: "Local Pond", status: 'completed', yOffset: -60 },
@@ -10,47 +19,61 @@ const state = {
     isSettingsOpen: false,
 };
 
-// Auth Service
+// Auth Service (Firebase Wrapper)
 const AuthService = {
-    getUsers: () => JSON.parse(localStorage.getItem('mb_users') || '[]'),
-    
-    saveUser: (user) => {
-        const users = AuthService.getUsers();
-        users.push(user);
-        localStorage.setItem('mb_users', JSON.stringify(users));
-    },
-
-    findUserByEmail: (email) => {
-        const users = AuthService.getUsers();
-        return users.find(u => u.email === email);
-    },
-
-    login: (email, password) => {
-        const user = AuthService.findUserByEmail(email);
-        if (user && user.password === password) {
-            localStorage.setItem('mb_currentUser', JSON.stringify(user));
-            return { success: true, user };
+    login: async (email, password) => {
+        if (!auth) return { success: false, message: "Firebase configuration missing. Check console for details." };
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            return { success: true, user: userCredential.user };
+        } catch (error) {
+            console.error("Login Error:", error.code, error.message);
+            let message = error.message;
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                message = "Invalid email or password.";
+            } else if (error.code === 'auth/invalid-credential') {
+                message = "Invalid credentials.";
+            } else if (error.code === 'auth/too-many-requests') {
+                message = "Too many failed attempts. Please try again later.";
+            }
+            return { success: false, message: message };
         }
-        return { success: false, message: 'Invalid email or password' };
     },
 
-    signup: (username, email, password) => {
-        if (AuthService.findUserByEmail(email)) {
-            return { success: false, message: 'User already exists' };
+    signup: async (username, email, password) => {
+        if (!auth) return { success: false, message: "Firebase configuration missing. Check console for details." };
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(userCredential.user, { displayName: username });
+            return { success: true, user: userCredential.user };
+        } catch (error) {
+            console.error("Signup Error:", error.code, error.message);
+            let message = error.message;
+            if (error.code === 'auth/operation-not-allowed') {
+                message = "Email/Password sign-in is not enabled in Firebase Console. Please enable it in the Authentication section.";
+            } else if (error.code === 'auth/email-already-in-use') {
+                message = "Email is already in use.";
+            } else if (error.code === 'auth/weak-password') {
+                message = "Password is too weak. It should be at least 6 characters.";
+            } else if (error.code === 'auth/invalid-api-key') {
+                message = "Invalid Firebase API Key. Please check your .env file.";
+            }
+            return { success: false, message: message };
         }
-        const newUser = { username, email, password, createdAt: new Date().toISOString() };
-        AuthService.saveUser(newUser);
-        localStorage.setItem('mb_currentUser', JSON.stringify(newUser));
-        return { success: true, user: newUser };
     },
 
-    logout: () => {
-        localStorage.removeItem('mb_currentUser');
-        window.location.href = 'index.html';
+    logout: async () => {
+        if (!auth) return;
+        try {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
     },
 
     getCurrentUser: () => {
-        return JSON.parse(localStorage.getItem('mb_currentUser'));
+        return auth ? auth.currentUser : null;
     }
 };
 
@@ -82,9 +105,26 @@ const goToSignupBtn = document.getElementById('go-to-signup');
 const goToLoginBtn = document.getElementById('go-to-login');
 
 // Check Auth State on Load
-const currentUser = AuthService.getCurrentUser();
-if (currentUser) {
-    updateUIForLoggedInUser(currentUser);
+if (auth) {
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // User is signed in
+            updateUIForLoggedInUser(user);
+            
+            // If on login or signup page, redirect to dashboard
+            if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
+                 window.location.href = './dashboard.html';
+            }
+        } else {
+            // User is signed out
+            // If on dashboard, redirect to login
+            if (window.location.pathname.includes('dashboard.html')) {
+                window.location.href = './login.html';
+            }
+        }
+    });
+} else {
+    console.warn("Auth not initialized, skipping auth state check");
 }
 
 function updateUIForLoggedInUser(user) {
@@ -92,18 +132,25 @@ function updateUIForLoggedInUser(user) {
     if (startBtn) {
         const startBtnText = startBtn.querySelector('span');
         if (startBtnText) {
-            startBtnText.innerHTML = `Continue as ${user.username} <svg style="width: 16px; height: 16px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>`;
+            // Use email as username fallback since displayName might be empty initially
+            const displayName = user.displayName || user.email.split('@')[0];
+            startBtnText.innerHTML = `Continue as ${displayName} <svg style="width: 16px; height: 16px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>`;
         }
+        
+        // Update Start Button Action
+        startBtn.onclick = () => window.location.href = 'dashboard.html';
     }
     
     // Hide Login/Signup buttons and show Logout (only on landing page)
     if (landingLoginBtn) {
         const authButtonsContainer = landingLoginBtn.parentElement;
         authButtonsContainer.innerHTML = `
-            <button class="btn-secondary btn-login" onclick="AuthService.logout()">
+            <button class="btn-secondary btn-login" id="logout-btn">
                 <span style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">Logout</span>
             </button>
         `;
+        // Re-attach listener for dynamic button
+        document.getElementById('logout-btn').addEventListener('click', () => AuthService.logout());
     }
 }
 
@@ -114,10 +161,10 @@ if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', toggleSettings)
 if (settingsCloseFooter) settingsCloseFooter.addEventListener('click', toggleSettings);
 
 if (startBtn) {
+    // Default behavior if not logged in (overridden by updateUIForLoggedInUser)
     startBtn.addEventListener('click', () => {
-        if (AuthService.getCurrentUser()) {
-            window.location.href = 'dashboard.html';
-        } else {
+        console.log("Start button clicked");
+        if (!auth || !auth.currentUser) {
             window.location.href = 'login.html';
         }
     });
@@ -126,21 +173,33 @@ if (startBtn) {
 if (backBtn) backBtn.addEventListener('click', () => window.location.href = 'index.html');
 
 // Auth Event Listeners
-if (landingLoginBtn) landingLoginBtn.onclick = () => window.location.href = 'login.html';
-if (landingSignupBtn) landingSignupBtn.onclick = () => window.location.href = 'signup.html';
-if (loginBackBtn) loginBackBtn.onclick = () => window.location.href = 'index.html';
-if (signupBackBtn) signupBackBtn.onclick = () => window.location.href = 'index.html';
-if (goToSignupBtn) goToSignupBtn.onclick = () => window.location.href = 'signup.html';
-if (goToLoginBtn) goToLoginBtn.onclick = () => window.location.href = 'login.html';
+if (landingLoginBtn) {
+    landingLoginBtn.addEventListener('click', () => {
+        console.log("Navigating to login.html");
+        window.location.href = 'login.html';
+    });
+}
+
+if (landingSignupBtn) {
+    landingSignupBtn.addEventListener('click', () => {
+        console.log("Navigating to signup.html");
+        window.location.href = 'signup.html';
+    });
+}
+
+if (loginBackBtn) loginBackBtn.addEventListener('click', () => window.location.href = 'index.html');
+if (signupBackBtn) signupBackBtn.addEventListener('click', () => window.location.href = 'index.html');
+if (goToSignupBtn) goToSignupBtn.addEventListener('click', () => window.location.href = 'signup.html');
+if (goToLoginBtn) goToLoginBtn.addEventListener('click', () => window.location.href = 'login.html');
 
 // Form Submissions
 if (loginForm) {
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = loginEmailInput.value;
         const password = loginPasswordInput.value;
         
-        const result = AuthService.login(email, password);
+        const result = await AuthService.login(email, password);
         if (result.success) {
             window.location.href = 'dashboard.html';
         } else {
@@ -150,13 +209,13 @@ if (loginForm) {
 }
 
 if (signupForm) {
-    signupForm.addEventListener('submit', (e) => {
+    signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = signupUsernameInput.value;
         const email = signupEmailInput.value;
         const password = signupPasswordInput.value;
         
-        const result = AuthService.signup(username, email, password);
+        const result = await AuthService.signup(username, email, password);
         if (result.success) {
             window.location.href = 'dashboard.html';
         } else {
