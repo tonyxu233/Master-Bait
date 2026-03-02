@@ -82,6 +82,7 @@ const settingsOverlay = document.getElementById('settings-overlay');
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsCloseBtn = document.getElementById('settings-close-btn');
 const settingsCloseFooter = document.getElementById('settings-close-footer');
+const settingsLogoutBtn = document.getElementById('settings-logout-btn');
 const headerSettingsBtn = document.getElementById('header-settings-btn');
 const startBtn = document.getElementById('start-btn');
 const backBtn = document.getElementById('dashboard-back-btn');
@@ -168,6 +169,7 @@ if (headerSettingsBtn) headerSettingsBtn.addEventListener('click', toggleSetting
 if (settingsBackdrop) settingsBackdrop.addEventListener('click', toggleSettings);
 if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', toggleSettings);
 if (settingsCloseFooter) settingsCloseFooter.addEventListener('click', toggleSettings);
+if (settingsLogoutBtn) settingsLogoutBtn.addEventListener('click', () => AuthService.logout());
 
 if (startBtn) {
     // Default behavior if not logged in (overridden by updateUIForLoggedInUser)
