@@ -104,6 +104,10 @@ const signupBackBtn = document.getElementById('signup-back-btn');
 const goToSignupBtn = document.getElementById('go-to-signup');
 const goToLoginBtn = document.getElementById('go-to-login');
 
+const authSelectLoginBtn = document.getElementById('auth-select-login-btn');
+const authSelectSignupBtn = document.getElementById('auth-select-signup-btn');
+const authSelectBackBtn = document.getElementById('auth-select-back-btn');
+
 // Check Auth State on Load
 if (auth) {
     onAuthStateChanged(auth, (user) => {
@@ -111,8 +115,10 @@ if (auth) {
             // User is signed in
             updateUIForLoggedInUser(user);
             
-            // If on login or signup page, redirect to dashboard
-            if (window.location.pathname.includes('login.html') || window.location.pathname.includes('signup.html')) {
+            // If on login, signup, or auth-selection page, redirect to dashboard
+            if (window.location.pathname.includes('login.html') || 
+                window.location.pathname.includes('signup.html') ||
+                window.location.pathname.includes('auth-selection.html')) {
                  window.location.href = './dashboard.html';
             }
         } else {
@@ -144,13 +150,16 @@ function updateUIForLoggedInUser(user) {
     // Hide Login/Signup buttons and show Logout (only on landing page)
     if (landingLoginBtn) {
         const authButtonsContainer = landingLoginBtn.parentElement;
-        authButtonsContainer.innerHTML = `
-            <button class="btn-secondary btn-login" id="logout-btn">
-                <span style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">Logout</span>
-            </button>
-        `;
-        // Re-attach listener for dynamic button
-        document.getElementById('logout-btn').addEventListener('click', () => AuthService.logout());
+        if (authButtonsContainer) {
+             authButtonsContainer.innerHTML = `
+                <button class="btn-secondary btn-login" id="logout-btn">
+                    <span style="filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));">Logout</span>
+                </button>
+            `;
+            // Re-attach listener for dynamic button
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) logoutBtn.addEventListener('click', () => AuthService.logout());
+        }
     }
 }
 
@@ -165,7 +174,7 @@ if (startBtn) {
     startBtn.addEventListener('click', () => {
         console.log("Start button clicked");
         if (!auth || !auth.currentUser) {
-            window.location.href = 'login.html';
+            window.location.href = './auth-selection.html';
         }
     });
 }
@@ -187,8 +196,26 @@ if (landingSignupBtn) {
     });
 }
 
-if (loginBackBtn) loginBackBtn.addEventListener('click', () => window.location.href = 'index.html');
-if (signupBackBtn) signupBackBtn.addEventListener('click', () => window.location.href = 'index.html');
+if (authSelectLoginBtn) {
+    authSelectLoginBtn.addEventListener('click', () => {
+        window.location.href = 'login.html';
+    });
+}
+
+if (authSelectSignupBtn) {
+    authSelectSignupBtn.addEventListener('click', () => {
+        window.location.href = 'signup.html';
+    });
+}
+
+if (authSelectBackBtn) {
+    authSelectBackBtn.addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+}
+
+if (loginBackBtn) loginBackBtn.addEventListener('click', () => window.location.href = 'auth-selection.html');
+if (signupBackBtn) signupBackBtn.addEventListener('click', () => window.location.href = 'auth-selection.html');
 if (goToSignupBtn) goToSignupBtn.addEventListener('click', () => window.location.href = 'signup.html');
 if (goToLoginBtn) goToLoginBtn.addEventListener('click', () => window.location.href = 'login.html');
 
