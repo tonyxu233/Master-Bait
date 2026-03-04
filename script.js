@@ -120,12 +120,12 @@ if (auth) {
             if (window.location.pathname.includes('login.html') || 
                 window.location.pathname.includes('signup.html') ||
                 window.location.pathname.includes('auth-selection.html')) {
-                 window.location.href = './dashboard.html';
+                 window.location.href = './levelMap.html';
             }
         } else {
             // User is signed out
             // If on dashboard, redirect to login
-            if (window.location.pathname.includes('dashboard.html')) {
+            if (window.location.pathname.includes('levelMap.html')) {
                 window.location.href = './login.html';
             }
         }
@@ -145,7 +145,7 @@ function updateUIForLoggedInUser(user) {
         }
         
         // Update Start Button Action
-        startBtn.onclick = () => window.location.href = 'dashboard.html';
+        startBtn.onclick = () => window.location.href = 'levelMap.html';
     }
     
     // Hide Login/Signup buttons and show Logout (only on landing page)
@@ -230,7 +230,7 @@ if (loginForm) {
         
         const result = await AuthService.login(email, password);
         if (result.success) {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'levelMap.html';
         } else {
             alert(result.message);
         }
@@ -246,7 +246,7 @@ if (signupForm) {
         
         const result = await AuthService.signup(username, email, password);
         if (result.success) {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'levelMap.html';
         } else {
             alert(result.message);
         }
