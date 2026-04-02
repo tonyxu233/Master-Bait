@@ -10,7 +10,7 @@ import {
 const levels = [
     { id: 1, title: "The Puddle", status: 'completed', yOffset: 0 },
     { id: 2, title: "Local Pond", status: 'completed', yOffset: -60 },
-    { id: 3, title: "Rushing River", status: 'current', yOffset: 60 },
+    { id: 3, title: "The Commuter's Chaos", status: 'current', yOffset: 60 },
     { id: 4, title: "Misty Lake", status: 'locked', yOffset: -30 },
     { id: 5, title: "Deep Ocean", status: 'locked', yOffset: 0 },
 ];
@@ -126,7 +126,7 @@ if (auth) {
             // User is signed out
             // If on dashboard, redirect to login
             if (window.location.pathname.includes('levelMap.html')) {
-                window.location.href = './login.html';
+                // window.location.href = './login.html';
             }
         }
     });
@@ -176,7 +176,7 @@ if (startBtn) {
     startBtn.addEventListener('click', () => {
         console.log("Start button clicked");
         if (!auth || !auth.currentUser) {
-            window.location.href = './auth-selection.html';
+            window.location.href = './levelMap.html';
         }
     });
 }
@@ -381,10 +381,16 @@ function renderDashboard() {
             tooltipClasses += "current";
         }
 
+        let clickHandler = '';
+        if (level.id === 3) {
+            clickHandler = `onclick="window.location.href='level3.html'" style="cursor: pointer;"`;
+        }
+
         html += `
             <div 
                 class="level-node-container"
                 style="left: ${coords.x}px; top: ${coords.y}px;"
+                ${clickHandler}
             >
                 <div class="${circleClasses}">
                     ${waterSvg}
